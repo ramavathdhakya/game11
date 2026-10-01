@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Game 11{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="flash-container">
+                {% for message in messages %}
+                    <div class="flash-message">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <header class="topbar">
+        <a href="{{ url_for('home') }}" class="brand">
+            <span class="brand-ball"></span>
+            <span class="brand-name">Game 11</span>
+        </a>
+
+        <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation">&#9776;</button>
+
+        <nav class="nav-links" id="navLinks">
+            <a href="{{ url_for('home') }}" class="{{ 'is-active' if request.endpoint == 'home' }}">Home</a>
+            {% if user %}
+                <a href="{{ url_for('my_bets') }}" class="{{ 'is-active' if request.endpoint == 'my_bets' }}">My Bets</a>
+                <a href="{{ url_for('wallet') }}" class="wallet-chip">
+                    <span class="coin"></span>
+                    {{ user.coins|coins }}
+                </a>
+
+                <div class="user-chip">
+                    <div class="user-avatar">{{ user.username[0]|upper }}</div>
+                    <span class="user-name">{{ user.username }}</span>
+                </div>
+
+                <form action="{{ url_for('logout') }}" method="POST" style="display:inline;">
+                    <button type="submit" class="btn-secondary">Logout</button>
+                </form>
+            {% else %}
+                <a href="{{ url_for('login') }}">Login</a>
+                <a href="{{ url_for('register') }}" class="btn-nav">Create Account</a>
+            {% endif %}
+        </nav>
+    </header>
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        &copy; {{ 2026 }} Game 11 &mdash; Practice betting with virtual coins only. No real money involved.
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

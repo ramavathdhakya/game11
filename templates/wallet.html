@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% block title %}Wallet{% endblock %}
+{% block content %}
+    <h1>Wallet</h1>
+
+    <div class="wallet-balance-card">
+        <div class="balance-label">Current Balance</div>
+        <div class="balance-value"><span class="coin coin-lg"></span> {{ user.coins|coins }}</div>
+
+        {% if low_balance %}
+            <div class="low-balance-banner">
+                &#9888; Your balance is running low &mdash; refill to keep betting.
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="card refill-card">
+        <h2>Refill Wallet</h2>
+        <p class="muted">Add virtual coins to your wallet. No real money involved.</p>
+
+        <div class="refill-options">
+            <form method="POST" action="{{ url_for('wallet_refill') }}">
+                <input type="hidden" name="amount" value="500">
+                <button type="submit" class="btn-refill {{ 'btn-refill-highlight' if low_balance }}">+ 500</button>
+            </form>
+            <form method="POST" action="{{ url_for('wallet_refill') }}">
+                <input type="hidden" name="amount" value="1000">
+                <button type="submit" class="btn-refill {{ 'btn-refill-highlight' if low_balance }}">+ 1000</button>
+            </form>
+            <form method="POST" action="{{ url_for('wallet_refill') }}">
+                <input type="hidden" name="amount" value="2000">
+                <button type="submit" class="btn-refill {{ 'btn-refill-highlight' if low_balance }}">+ 2000</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="wallet-columns">
+        <div class="wallet-column">
+            <h2>Spend History</h2>
+            {% if not spends %}
+                <p class="muted">No spending yet.</p>
+            {% else %}
+                <div class="wallet-list">
+                    {% for bet in spends %}
+                        <div class="wallet-row wallet-row-spend">
+                            <div class="wallet-row-icon icon-spend">&#8595;</div>
+                            <div class="wallet-row-main">
+                                <div class="wallet-row-title">Bet on {{ bet.team_picked }}</div>
+                                <a href="{{ url_for('match_detail', match_id=bet.match_id) }}" class="wallet-row-link">View match &rarr;</a>
+                            </div>
+                            <div class="wallet-row-amount amount-spend">&minus; {{ bet.stake|coins }}</div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="wallet-column">
+            <h2>Refill History</h2>
+            {% if not refills %}
+                <p class="muted">No refills yet.</p>
+            {% else %}
+                <div class="wallet-list">
+                    {% for txn in refills %}
+                        <div class="wallet-row wallet-row-refill">
+                            <div class="wallet-row-icon icon-refill">&#8593;</div>
+                            <div class="wallet-row-main">
+                                <div class="wallet-row-title">Wallet Top-up</div>
+                            </div>
+                            <div class="wallet-row-amount amount-refill">+ {{ txn.amount|coins }}</div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}

@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    Game 11
+{% endblock %}
+
+{% block content %}
+
+    {% for match in matches %}
+        <div class="match-card">
+            <a href="{{ url_for('match_detail', match_id=match.match_id) }}" class="match-card-link">
+                <div class="match-header">
+                    <span class="tag-format">{{ match.format }}</span>
+                    {% if match.status == 'live' %}
+                        <span class="match-status status-live">&#9679; Live</span>
+                    {% elif match.status == 'finished' %}
+                        <span class="match-status status-finished">Finished</span>
+                    {% elif match.status == 'started' %}
+                        <span class="match-status status-upcoming">Started</span>
+                    {% else %}
+                        <span class="match-status status-upcoming">Upcoming</span>
+                    {% endif %}
+                    <span class="match-time">{{ match.match_time }}</span>
+                    {% if match.venue %}
+                        <span class="match-teams">{{ match.venue }}</span>
+                    {% endif %}
+                </div>
+
+                <div class="match-body">
+                    <div class="team">
+                        <div class="team-badge">
+                            {% if match.team1.logo %}
+                                <img src="{{ match.team1.logo }}" alt="{{ match.team1.short }}" class="team-logo">
+                            {% else %}
+                                {{ match.team1.short }}
+                            {% endif %}
+                        </div>
+                        <div class="team-name">{{ match.team1.name }}</div>
+                        <div class="odds">{{ match.team1.odds }}</div>
+                    </div>
+
+                    <div class="vs">VS</div>
+
+                    <div class="team">
+                        <div class="team-badge">
+                            {% if match.team2.logo %}
+                                <img src="{{ match.team2.logo }}" alt="{{ match.team2.short }}" class="team-logo">
+                            {% else %}
+                                {{ match.team2.short }}
+                            {% endif %}
+                        </div>
+                        <div class="team-name">{{ match.team2.name }}</div>
+                        <div class="odds">{{ match.team2.odds }}</div>
+                    </div>
+                </div>
+            </a>
+
+            <div class="match-footer">
+                {% if match.betting_open %}
+                    <span class="betting-pill betting-pill-open">
+                        <span class="pill-dot"></span> Betting Open
+                    </span>
+                {% else %}
+                    <span class="betting-pill betting-pill-closed">
+                        <span class="pill-dot"></span> Betting Closed
+                    </span>
+                {% endif %}
+
+                <a href="{{ url_for('match_detail', match_id=match.match_id) }}" class="btn-slip">
+                    {% if match.betting_open %}
+                        Place Bet
+                    {% else %}
+                        View Match
+                    {% endif %}
+                </a>
+            </div>
+        </div>
+    {% else %}
+        <p class="muted" style="text-align:center; margin-top:40px;">No matches available right now. Check back soon.</p>
+    {% endfor %}
+
+{% endblock %}

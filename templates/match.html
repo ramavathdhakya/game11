@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block title %}{{ match.team1.name }} vs {{ match.team2.name }}{% endblock %}
+{% block content %}
+
+    <div class="match-card">
+        <div class="match-header">
+            <span class="tag-format">{{ match.format }}</span>
+            {% if match.status == 'live' %}
+                <span class="match-status status-live">&#9679; Live</span>
+            {% elif match.status == 'finished' %}
+                <span class="match-status status-finished">Finished</span>
+            {% else %}
+                <span class="match-status status-upcoming">{{ match.status|capitalize }}</span>
+            {% endif %}
+            <span class="match-time">{{ match.match_time }}</span>
+            <span class="match-teams">{{ match.venue }}</span>
+        </div>
+
+        <div class="match-body">
+            <div class="team">
+                {% if match.team1.logo %}
+                    <img src="{{ match.team1.logo }}" alt="{{ match.team1.name }}" class="team-badge team-logo">
+                {% else %}
+                    <div class="team-badge">{{ match.team1.short }}</div>
+                {% endif %}
+                <div class="team-name">{{ match.team1.name }}</div>
+                <div class="odds">{{ match.team1.odds }}</div>
+            </div>
+
+            <div class="vs">VS</div>
+
+            <div class="team">
+                {% if match.team2.logo %}
+                    <img src="{{ match.team2.logo }}" alt="{{ match.team2.name }}" class="team-badge team-logo">
+                {% else %}
+                    <div class="team-badge">{{ match.team2.short }}</div>
+                {% endif %}
+                <div class="team-name">{{ match.team2.name }}</div>
+                <div class="odds">{{ match.team2.odds }}</div>
+            </div>
+        </div>
+
+        <div class="betting-banner {{ 'betting-banner-open' if match.betting_open else 'betting-banner-closed' }}">
+            {% if match.betting_open %}
+                <span class="pill-dot"></span> Betting is open for this match
+            {% elif match.status == 'live' %}
+                &#128274; Betting is closed &mdash; this match is live
+            {% elif match.status == 'finished' %}
+                &#128274; Betting is closed &mdash; this match has finished
+            {% else %}
+                &#128274; Betting is closed for this match
+            {% endif %}
+        </div>
+
+        {% if match.betting_open %}
+            <form method="POST" action="{{ url_for('place_bet', match_id=match.match_id) }}">
+                <div class="card" style="margin: 12px 24px;">
+                    <div class="field-group">
+                        <label for="team_picked">Pick a team</label>
+                        <select id="team_picked" name="team_picked" required>
+                            <option value="{{ match.team1.name }}">{{ match.team1.name }} ({{ match.team1.odds }})</option>
+                            <option value="{{ match.team2.name }}">{{ match.team2.name }} ({{ match.team2.odds }})</option>
+                        </select>
+                    </div>
+                    <div class="field-group">
+                        <label for="stake">Stake (coins)</label>
+                        <input type="number" id="stake" name="stake" min="1" placeholder="Enter coins to bet" required>
+                    </div>
+                    <button type="submit" class="btn-slip">Place Bet</button>
+                </div>
+            </form>
+        {% endif %}
+
+        <a href="{{ url_for('match_leaderboard', match_id=match.match_id) }}" class="btn-leaderboard">
+            &#127942; View Leaderboard
+        </a>
+    </div>
+
+{% endblock %}

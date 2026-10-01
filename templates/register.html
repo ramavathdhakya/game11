@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block title %}Register{% endblock %}
+{% block content %}
+<div class="auth-container">
+    <div class="auth-title">Create Account</div>
+    <div class="auth-subtitle">Join Game 11 and start betting with virtual coins</div>
+
+    <form method="POST" class="auth-form">
+        <div class="field-group">
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username" placeholder="Choose a username" required>
+        </div>
+        <div class="field-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" placeholder="Enter your email" required>
+        </div>
+        <div class="field-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" placeholder="Create a password" required>
+        </div>
+        <button type="submit">Create Account</button>
+    </form>
+
+    <div class="auth-footer">
+        Already have an account? <a href="{{ url_for('login') }}">Login here</a>
+    </div>
+</div>
+{% endblock %}

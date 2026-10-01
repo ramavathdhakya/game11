@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% block title %}My Bets{% endblock %}
+{% block content %}
+    <h1>My Bets</h1>
+
+    {% if not bets %}
+        <div class="card bets-empty">
+            <div class="lock-icon">&#127919;</div>
+            <p><strong>No bets yet</strong></p>
+            <p class="muted">Your betting history will show up here once you place your first bet.</p>
+            <a href="{{ url_for('home') }}" class="btn">Browse Matches</a>
+        </div>
+    {% else %}
+        <div class="bets-summary">
+            <div class="summary-stat">
+                <div class="summary-label">Total Bets</div>
+                <div class="summary-value">{{ bets|length }}</div>
+            </div>
+            <div class="summary-stat">
+                <div class="summary-label">Total Staked</div>
+                <div class="summary-value"><span class="coin"></span> {{ total_staked|coins }}</div>
+            </div>
+            <div class="summary-stat">
+                <div class="summary-label">Total Winnings</div>
+                <div class="summary-value summary-value-win"><span class="coin"></span> {{ total_winnings|coins }}</div>
+            </div>
+        </div>
+
+        <div class="bets-list">
+            {% for bet in bets %}
+                <div class="bet-row">
+                    <div class="bet-status status-{{ bet.status }}">
+                        {% if bet.status == 'won' %}
+                            &#9989; Won
+                        {% elif bet.status == 'lost' %}
+                            &#10060; Lost
+                        {% elif bet.status == 'refunded' %}
+                            &#8617; Refunded
+                        {% else %}
+                            &#8987; Pending
+                        {% endif %}
+                    </div>
+
+                    <div class="bet-main">
+                        <div class="bet-team">Bet on <strong>{{ bet.team_picked }}</strong></div>
+                        <a href="{{ url_for('match_detail', match_id=bet.match_id) }}" class="bet-match-link">View match &rarr;</a>
+                    </div>
+
+                    <div class="bet-figures">
+                        <div class="bet-figure">
+                            <span class="figure-label">Stake</span>
+                            <span class="figure-value"><span class="coin"></span> {{ bet.stake|coins }}</span>
+                        </div>
+                        <div class="bet-figure">
+                            <span class="figure-label">Odds</span>
+                            <span class="figure-value">{{ bet.odds }}</span>
+                        </div>
+                        <div class="bet-figure">
+                            <span class="figure-label">
+                                {{ 'Winnings' if bet.status == 'won' else ('Lost' if bet.status == 'lost' else ('Refunded' if bet.status == 'refunded' else 'Potential')) }}
+                            </span>
+                            <span class="figure-value {{ 'figure-win' if bet.status == 'won' else ('figure-loss' if bet.status == 'lost' else '') }}">
+                                <span class="coin"></span>
+                                {% if bet.status == 'won' %}
+                                    {{ bet.winnings|coins }}
+                                {% elif bet.status == 'lost' or bet.status == 'refunded' %}
+                                    {{ bet.stake|coins }}
+                                {% else %}
+                                    {{ (bet.stake * bet.odds)|round|int|coins }}
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endblock %}

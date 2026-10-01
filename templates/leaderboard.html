@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block title %}Match Leaderboard{% endblock %}
+{% block content %}
+    <h1>Match Leaderboard</h1>
+
+    {% if not has_bet %}
+        <div class="card leaderboard-locked">
+            <div class="lock-icon">&#128274;</div>
+            <p><strong>Leaderboard locked</strong></p>
+            <p class="muted">You haven't placed a bet on this match yet. Place a bet to unlock the leaderboard.</p>
+            <a href="{{ url_for('match_detail', match_id=match_id) }}" class="btn">Go to Match</a>
+        </div>
+    {% else %}
+        <p class="muted">
+            All bets placed on this match, ranked by winnings.
+            {% if user_rank %} Your position: <strong>#{{ user_rank }}</strong>{% endif %}
+        </p>
+        <div class="leaderboard-list">
+            {% for bet in bets %}
+                <div class="leaderboard-row {{ 'top-1' if loop.index == 1 }} {{ 'top-2' if loop.index == 2 }} {{ 'top-3' if loop.index == 3 }}">
+                    <div class="lb-rank">{{ loop.index }}</div>
+                    <div class="user-avatar">{{ bet.user.username[0]|upper }}</div>
+                    <div class="lb-name">
+                        {{ bet.user.username }}
+                        <span class="muted" style="font-size:12px;">bet on {{ bet.team_picked }}</span>
+                    </div>
+                    <div class="lb-coins">
+                        <span class="coin"></span>
+                        {{ bet.winnings|coins }}
+                    </div>
+                </div>
+            {% else %}
+                <p>No bets placed on this match yet.</p>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endblock %}
