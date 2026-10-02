@@ -438,3 +438,158 @@ Render deploys the new version by itself.
 - The `Match` table in `models.py` is not used yet.
 - Odds are always 2.0.
 - The test page `my-bets-beta.html` has a "Refunded" status, but the code does not use it yet.
+
+# Game 11 Helper: n8n Setup
+
+This file explains only the **n8n part** of the helper.
+
+## How it works
+
+1. A player types a question in the Help box on the website.
+2. Flask collects **only that player's data** (coins, bets, refills, today's matches).
+3. Flask sends the question and the data to n8n.
+4. n8n asks the AI and sends the answer back.
+5. Flask shows the answer in the Help box.
+
+n8n does not read your database. Flask sends the data with the question, so this works with SQLite on your laptop. You do not need to deploy.
+
+## What you need
+
+- An n8n account
+- An AI key. Pick one:
+  - **Anthropic key** (needs paid credit): https://console.anthropic.com/settings/keys
+  - **Google Gemini key** (free for testing): https://aistudio.google.com
+- A secret password that you make up (example: `test123`)
+- The file `n8n_system_message.txt` from this folder
+
+## Step 1: Create the workflow
+
+1. Log in to n8n.
+2. Click **Create workflow**.
+3. Name it `Game 11 Helper`.
+
+## Step 2: Add the Webhook node
+
+The Webhook is the door where Flask sends the question.
+
+1. Click **Add first step** and search for `Webhook`. Click it.
+2. Set these:
+
+| Setting | Value |
+|---|---|
+| HTTP Method | `POST` (n8n starts with GET, so you must change it) |
+| Path | `game11-helper` (no `/` at the start) |
+| Authentication | `Header Auth` |
+| Respond | `Using 'Respond to Webhook' Node` |
+
+3. For **Authentication**, click **Create new credential**:
+   - **Name:** `X-Secret`
+   - **Value:** your made-up secret password
+   - Click **Save**
+
+Remember this password. You will put the same password in your `.env` file as `N8N_SECRET`.
+
+## Step 3: Add the AI Agent node
+
+1. Click the plus button after the Webhook node. Search `AI Agent` and add it.
+2. Set **Source for Prompt** to `Define below`.
+3. In **Prompt (User Message)**, paste this:
+
+```
+Player question: {{ $('Webhook').first().json.body.question }}
+
+Player data (JSON): {{ JSON.stringify($('Webhook').first().json.body.context) }}
+```
+
+4. Click **Add Option** and choose **System Message**.
+5. Open `n8n_system_message.txt`, copy all of it, and paste it into the System Message box.
+
+## Step 4: Add the Chat Model
+
+On the AI Agent node, click the plus button under **Chat Model**. Pick one option.
+
+### Option A: Anthropic (paid credit)
+
+1. Make a key in the Anthropic Console. Add some credit in Billing first.
+2. In n8n, choose **Anthropic Chat Model**.
+3. Click **Create new credential**, paste the key (it starts with `sk-ant-`), and **Save**.
+4. In **Model**, pick a Claude Sonnet model.
+
+### Option B: Google Gemini (free for testing)
+
+1. Go to https://aistudio.google.com and sign in with Google.
+2. Click **Get API key** and create a key. Copy it.
+3. In n8n, choose **Google Gemini Chat Model**.
+4. Click **Create new credential**, paste the key, and **Save**.
+5. In **Model**, pick a Flash model.
+
+Do not paste extra spaces with the key.
+
+## Step 5: Add the Respond to Webhook node
+
+1. Click the plus button after the AI Agent node. Search `Respond to Webhook` and add it.
+2. Set these:
+
+| Setting | Value |
+|---|---|
+| Respond With | `JSON` |
+| Response Body | `{{ { "answer": $json.output } }}` |
+
+3. Press `Ctrl+S` to save.
+
+Your workflow should look like this:
+
+```
+Webhook -> AI Agent -> Respond to Webhook
+              |
+         Chat Model
+```
+
+## Step 6: Test n8n alone
+
+1. Double-click the **Webhook** node.
+2. At the top, click the **Test URL** tab and copy the link. It has `/webhook-test/` in it.
+3. Click **Listen for test event**.
+4. Right away, run this in your terminal. Use your Test URL and your secret:
+
+```
+curl -X POST "TEST_URL_HERE" -H "X-Secret: your-secret" -H "Content-Type: application/json" -d '{"question": "How many coins do I have?", "context": {"coins": 750, "total_bets": 1, "total_staked": 250, "total_winnings": 0, "latest_bets": [], "latest_refills": [], "todays_matches": []}}'
+```
+
+5. You should get `{"answer": "..."}` and the answer should say 750 coins.
+
+Notes:
+- The Test URL works for **one call** each time you click **Listen for test event**.
+- Do not paste the link in the browser. A browser sends GET, but this webhook needs POST.
+
+## Step 7: Make it live
+
+1. Turn on the **Active** switch at the top right.
+2. In the Webhook node, click the **Production URL** tab and copy the link. It has `/webhook/` in it.
+3. Put these two lines in your project's `.env` file:
+
+```
+N8N_WEBHOOK_URL=your_production_url
+N8N_SECRET=your_secret_password
+```
+
+The secret in `.env` must be exactly the same as the **Value** of the `X-Secret` credential in n8n.
+
+## Common problems
+
+| Problem | Fix |
+|---|---|
+| `This webhook is not registered for POST requests` | Set **HTTP Method** to `POST`, save, click **Listen for test event**, then send the request with curl. If you use the Production URL, switch the workflow off and on again. |
+| `404` on the Test URL | Click **Listen for test event** first. The Test URL works for one call only. |
+| `403` error | The secret or the name is wrong. The name must be `X-Secret`, and the value must match `.env`. |
+| `404` on the Production URL | The workflow is not **Active**. |
+| Answer says it has no data | Open the Webhook node output and check that `context` arrived. |
+| `Invalid API key` | Paste the key again with no extra spaces. |
+| `Credit balance too low` | Add credit in Anthropic Billing, or use the free Gemini option. |
+| No matches in the answer | The BigBall API call may have failed. Look at the Flask terminal for `API call failed`. |
+
+## Safety rules
+
+- Never put your AI key or secret password in your Flask code or on GitHub.
+- Keep `.env` out of GitHub.
+- Use a long secret password before you deploy.
