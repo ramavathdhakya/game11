@@ -1,0 +1,144 @@
+Function 1: build_helper_context(user_id)
+
+Its job: collect the data of one player and put it in a package. This package is sent to n8n together with the question.
+
+Step 1: Get the player
+
+python
+user = User.query.get(user_id)
+
+This looks in the Users table and finds the player with this id. We need it to read their coins.
+
+Step 2: Get all the bets of the player
+
+python
+bets = Bet.query.filter_by(user_id=user_id).order_by(Bet.id.desc()).all()
+filter_by(user_id=user_id) takes only the bets of this player, so we never read another player's bets.
+order_by(Bet.id.desc()) puts the newest bet first.
+.all() gives the full list.
+
+Step 3: Get the last 10 refills
+
+python
+refills = (
+    WalletTransaction.query
+    .filter_by(user_id=user_id, type="refill")
+    .order_by(WalletTransaction.id.desc())
+    .limit(10)
+    .all()
+)
+
+It does the same as Step 2 but for the wallet. It takes only the rows where the type is "refill", newest first, and stops at 10.
+
+Step 4: Get today's matches
+
+python
+matches = get_current_cricket_matches()[:15]
+
+This calls the function you already had. It asks the BigBall API for today's matches. [:15] keeps only the first 15, so the package does not get too big.
+
+Step 5: Build the package (a dictionary)
+Now the function returns one package with these parts:
+
+Part	What it holds	How it is made
+coins	The player's coins	user.coins. If the player is not found, it uses 0.
+total_bets	How many bets	len(bets) counts the list
+total_staked	All coins the player has bet	sum(b.stake for b in bets) adds up every stake
+total_winnings	All coins won	Adds winnings only for bets with status "won". or 0 stops errors if the value is empty.
+latest_bets	The newest 20 bets	bets[:20], and for each bet it keeps the match id, team, stake, odds, status, winnings, and potential winnings
+latest_refills	The last 10 refill amounts	A list of t.amount
+todays_matches	Today's matches	For each match it keeps the id, league, teams, status, start time, venue, odds, and whether betting is open
+
+About potential winnings
+
+python
+"potential_winnings": round(b.stake * b.odds)
+
+This is stake times odds. A 250 bet with odds 2.0 gives 500.
+
+Why this function is safe
+It receives user_id as an input, and it uses it in every question to the database. So the package can only hold data of that one player.
+
+Function 2: ask()
+
+Its job: receive the question from the chat box, send it to n8n, and return the answer.
+
+Step 1: Tell Flask what link this is
+
+python
+@app.route("/ask", methods=["POST"])
+def ask():
+
+The chat box sends its question to the link /ask. POST means it is sending data, not just opening a page.
+
+Step 2: Check that the player is logged in
+
+python
+user_id = session.get("user_id")
+if not user_id:
+    return jsonify({"answer": "Please log in to use the helper."}), 401
+session.get("user_id") reads who is logged in. This comes from your login, not from the browser's text, so a player cannot pretend to be someone else.
+If nobody is logged in, it stops and sends back a message. 401 is the code for "not allowed".
+
+Step 3: Read the question
+
+python
+data = request.get_json(silent=True) or {}
+question = (data.get("question") or "").strip()[:500]
+request.get_json reads the data the chat box sent.
+.strip() removes extra spaces at the start and end.
+[:500] cuts the question at 500 letters. This stops very long questions.
+If something is missing, it uses empty values instead of crashing.
+
+Step 4: Stop if the question is empty
+
+python
+if not question:
+    return jsonify({"answer": "Please type a question."})
+
+Step 5: Check that n8n is set up
+
+python
+if not N8N_WEBHOOK_URL or not N8N_SECRET:
+    return jsonify({"answer": "The helper is not set up yet."})
+
+If you forgot to put the link or the secret in .env, the player sees this message.
+
+Step 6: Send everything to n8n
+
+python
+resp = requests.post(
+    N8N_WEBHOOK_URL,
+    json={"question": question, "context": build_helper_context(user_id)},
+    headers={"X-Secret": N8N_SECRET},
+    timeout=25,
+)
+requests.post sends data to the n8n link.
+json= is the package: the question, and the player's data from Function 1.
+headers= adds the secret password with the name X-Secret. n8n checks it at the door.
+timeout=25 means: wait at most 25 seconds. If n8n is too slow, give up.
+
+Step 7: Check and read the reply
+
+python
+resp.raise_for_status()
+answer = resp.json().get("answer") or "Sorry, I have no answer for that."
+raise_for_status() makes an error if n8n said something went wrong, like a wrong secret (403).
+resp.json().get("answer") takes the answer part from n8n's reply. This is the text from your Respond to Webhook node.
+If the answer is empty, it uses a polite backup message.
+
+Step 8: Handle problems
+
+python
+except (requests.RequestException, ValueError) as e:
+    print("n8n helper error:", e)
+    answer = "Sorry, the helper is not working right now. Please try again later."
+
+All of Steps 6 and 7 sit inside a try: block. If n8n is off, too slow, or sends a bad reply, the code jumps here. It prints the real error in your Flask terminal, so you can see what went wrong, and shows the player a simple message.
+
+Step 9: Send the answer to the chat box
+
+python
+return jsonify({"answer": answer})
+
+The chat box receives {"answer": "..."} and shows the text on the screen.
